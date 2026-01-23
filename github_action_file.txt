@@ -1,0 +1,455 @@
+name: Node CI/CD Pipeline
+on:
+ push:
+  branches: ["main"]
+  jobs:
+   build-deploy:
+    runs-on: ubuntu-latest
+     steps:
+      - name: Checkout Code
+       uses: actions/checkout@v3
+        - name: Login to Docker Hub
+	 uses: docker/login-action@v2
+	  with:
+	   username: ${{ secrets.DOCKER_USERNAME }}
+	    password: ${{ secrets.DOCKER_PASSWORD }}
+	     - name: Build & Push Docker Image
+	      run: |
+	       docker build -t ${{ secrets.DOCKER_USERNAME }}/node-app:latest .
+	        docker push ${{ secrets.DOCKER_USERNAME }}/node-app:latest
+		 - name: Deploy to EC2
+		  uses: appleboy/ssh-action@v0.1.7
+		   with:
+		    host: ${{ secrets.EC2_HOST }}
+		     username: ${{ secrets.EC2_USER }}
+		      key: ${{ secrets.EC2_KEY }}
+		       script: |
+		        docker pull ${{ secrets.DOCKER_USERNAME }}/node-app:latest
+			 docker stop nodeapp || true
+			  docker rm nodeapp || true
+			   docker run -d -p 3000:3000 --name nodeapp ${{ secrets.DOCKER_USERNAME }}/node-app:latest
+			    
+			     
+			      
+			       Ì¥Å What is this GitHub Actions workflow?
+
+			       This workflow automatically:
+
+			       Runs when you push code to the main branch
+
+			       Builds a Docker image of your Node.js app
+
+			       Pushes the image to Docker Hub
+
+			       Deploys the app to an EC2 server
+
+			       Ì±â This is called a CI/CD pipeline
+			       (CI = Continuous Integration, CD = Continuous Deployment)
+
+			       Ì≥Ñ Full Explanation (Line by Line)
+			       Ìø∑Ô∏è Workflow name
+			       name: Node CI/CD Pipeline
+
+
+			       This is just the display name you see in the GitHub Actions tab.
+
+			       ‚ñ∂Ô∏è When this workflow runs
+			       on:
+			         push:
+				    branches: ["main"]
+
+
+				    Ì¥π Meaning:
+
+				    Whenever you push code
+
+				    To the main branch
+
+				    GitHub Actions will start this pipeline
+
+				    ‚ö†Ô∏è Indentation note: branches should align properly (YAML is strict).
+
+				    Ì∑± Jobs section
+				    jobs:
+				      build-deploy:
+
+
+				      A job is a group of steps
+
+				      Job name here is build-deploy
+
+				      All steps inside run in order
+
+				      Ì∂•Ô∏è Runner (where the job runs)
+				      runs-on: ubuntu-latest
+
+
+				      GitHub creates a temporary Ubuntu Linux server
+
+				      Your job runs on this machine
+
+				      After completion, the machine is destroyed
+
+				      Ì∫ú Steps (actual work)
+				      steps:
+
+
+				      Each step performs one action.
+
+				      Ì¥Ω Step 1: Checkout your code
+				      - name: Checkout Code
+				        uses: actions/checkout@v4
+
+
+					Ì¥π What it does:
+
+					Downloads your GitHub repository code
+
+					Makes it available inside the runner
+
+					Ì±â Without this, Docker cannot see your app code.
+
+					Ì¥ê Step 2: Login to Docker Hub
+					- name: Login to Docker Hub
+					  uses: docker/login-action@v3
+
+					  with:
+					    username: ${{ secrets.DOCKER_USERNAME }}
+					      password: ${{ secrets.DOCKER_PASSWORD }}
+
+
+					      Ì¥π What it does:
+
+					      Logs into Docker Hub securely
+
+					      Uses GitHub Secrets (hidden values)
+
+					      Ì±â Required so GitHub can push Docker images to your Docker Hub account.
+
+					      Ì∞≥ Step 3: Build & Push Docker Image
+					      - name: Build & Push Docker Image
+					        run: |
+
+
+						This means: ‚Äúrun Linux shell commands‚Äù.
+
+						Build image
+						docker build -t <username>/node-app:latest .
+
+
+						Reads your Dockerfile
+
+						Creates a Docker image
+
+						Tags it as node-app:latest
+
+						Push image
+						docker push <username>/node-app:latest
+
+
+						Uploads the image to Docker Hub
+
+						Anyone (or your EC2) can pull it
+
+						Ì∫Ä Step 4: Deploy to EC2
+						- name: Deploy to EC2
+						  uses: appleboy/ssh-action@v1.0.0
+
+
+						  Ì¥π What it does:
+
+						  Connects to your EC2 server using SSH
+
+						  Runs commands inside EC2
+
+						  EC2 connection details
+						  with:
+						    host: ${{ secrets.EC2_HOST }}
+						      username: ${{ secrets.EC2_USER }}
+						        key: ${{ secrets.EC2_KEY }}
+
+
+							These secrets store:
+
+							EC2 public IP / DNS
+
+							Linux username (e.g. ubuntu)
+
+							Private SSH key
+
+							Commands executed on EC2
+							docker pull <username>/node-app:latest
+
+
+							‚¨áÔ∏è Download latest image from Docker Hub
+
+							docker stop nodeapp || true
+							docker rm nodeapp || true
+
+
+							Ìªë Stop and remove old container
+							(|| true prevents failure if container doesn‚Äôt exist)
+
+							docker run -d -p 3000:3000 --name nodeapp <image>
+
+
+							Ì∫Ä Starts a new container
+
+							Runs in background (-d)
+
+							Maps port 3000 EC2 ‚Üí 3000 container
+
+							App becomes live Ìæâ
+
+							Ì¥Ñ What happens when you push code?
+
+							1Ô∏è‚É£ You push code to main
+							2Ô∏è‚É£ GitHub Actions starts workflow
+							3Ô∏è‚É£ App is built into Docker image
+							4Ô∏è‚É£ Image pushed to Docker Hub
+							5Ô∏è‚É£ EC2 pulls latest image
+							6Ô∏è‚É£ Old app stops
+							7Ô∏è‚É£ New app starts automatically
+
+							‚û°Ô∏è Zero manual work
+
+							Ì∑† Interview-ready explanation
+
+							This GitHub Actions workflow implements a CI/CD pipeline where every push to the main branch builds a Docker image, pushes it to Docker Hub, and deploys it to an EC2 instance using SSH.
+
+							‚úÖ Important improvements (next level)
+
+							Add --restart unless-stopped
+
+							Use image tags with github.sha
+
+							Add health checks
+
+							Use AWS ECR instead of Docker Hubname: Node CI/CD Pipeline
+							on:
+							 push:
+							  branches: ["main"]
+							  jobs:
+							   build-deploy:
+							    runs-on: ubuntu-latest
+							     steps:
+							      - name: Checkout Code
+							       uses: actions/checkout@v3
+							        - name: Login to Docker Hub
+								 uses: docker/login-action@v2
+								  with:
+								   username: ${{ secrets.DOCKER_USERNAME }}
+								    password: ${{ secrets.DOCKER_PASSWORD }}
+								     - name: Build & Push Docker Image
+								      run: |
+								       docker build -t ${{ secrets.DOCKER_USERNAME }}/node-app:latest .
+								        docker push ${{ secrets.DOCKER_USERNAME }}/node-app:latest
+									 - name: Deploy to EC2
+									  uses: appleboy/ssh-action@v0.1.7
+									   with:
+									    host: ${{ secrets.EC2_HOST }}
+									     username: ${{ secrets.EC2_USER }}
+									      key: ${{ secrets.EC2_KEY }}
+									       script: |
+									        docker pull ${{ secrets.DOCKER_USERNAME }}/node-app:latest
+										 docker stop nodeapp || true
+										  docker rm nodeapp || true
+										   docker run -d -p 3000:3000 --name nodeapp ${{ secrets.DOCKER_USERNAME }}/node-app:latest
+										    
+										     
+										      
+										       Ì¥Å What is this GitHub Actions workflow?
+
+										       This workflow automatically:
+
+										       Runs when you push code to the main branch
+
+										       Builds a Docker image of your Node.js app
+
+										       Pushes the image to Docker Hub
+
+										       Deploys the app to an EC2 server
+
+										       Ì±â This is called a CI/CD pipeline
+										       (CI = Continuous Integration, CD = Continuous Deployment)
+
+										       Ì≥Ñ Full Explanation (Line by Line)
+										       Ìø∑Ô∏è Workflow name
+										       name: Node CI/CD Pipeline
+
+
+										       This is just the display name you see in the GitHub Actions tab.
+
+										       ‚ñ∂Ô∏è When this workflow runs
+										       on:
+										         push:
+											    branches: ["main"]
+
+
+											    Ì¥π Meaning:
+
+											    Whenever you push code
+
+											    To the main branch
+
+											    GitHub Actions will start this pipeline
+
+											    ‚ö†Ô∏è Indentation note: branches should align properly (YAML is strict).
+
+											    Ì∑± Jobs section
+											    jobs:
+											      build-deploy:
+
+
+											      A job is a group of steps
+
+											      Job name here is build-deploy
+
+											      All steps inside run in order
+
+											      Ì∂•Ô∏è Runner (where the job runs)
+											      runs-on: ubuntu-latest
+
+
+											      GitHub creates a temporary Ubuntu Linux server
+
+											      Your job runs on this machine
+
+											      After completion, the machine is destroyed
+
+											      Ì∫ú Steps (actual work)
+											      steps:
+
+
+											      Each step performs one action.
+
+											      Ì¥Ω Step 1: Checkout your code
+											      - name: Checkout Code
+											        uses: actions/checkout@v4
+
+
+												Ì¥π What it does:
+
+												Downloads your GitHub repository code
+
+												Makes it available inside the runner
+
+												Ì±â Without this, Docker cannot see your app code.
+
+												Ì¥ê Step 2: Login to Docker Hub
+												- name: Login to Docker Hub
+												  uses: docker/login-action@v3
+
+												  with:
+												    username: ${{ secrets.DOCKER_USERNAME }}
+												      password: ${{ secrets.DOCKER_PASSWORD }}
+
+
+												      Ì¥π What it does:
+
+												      Logs into Docker Hub securely
+
+												      Uses GitHub Secrets (hidden values)
+
+												      Ì±â Required so GitHub can push Docker images to your Docker Hub account.
+
+												      Ì∞≥ Step 3: Build & Push Docker Image
+												      - name: Build & Push Docker Image
+												        run: |
+
+
+													This means: ‚Äúrun Linux shell commands‚Äù.
+
+													Build image
+													docker build -t <username>/node-app:latest .
+
+
+													Reads your Dockerfile
+
+													Creates a Docker image
+
+													Tags it as node-app:latest
+
+													Push image
+													docker push <username>/node-app:latest
+
+
+													Uploads the image to Docker Hub
+
+													Anyone (or your EC2) can pull it
+
+													Ì∫Ä Step 4: Deploy to EC2
+													- name: Deploy to EC2
+													  uses: appleboy/ssh-action@v1.0.0
+
+
+													  Ì¥π What it does:
+
+													  Connects to your EC2 server using SSH
+
+													  Runs commands inside EC2
+
+													  EC2 connection details
+													  with:
+													    host: ${{ secrets.EC2_HOST }}
+													      username: ${{ secrets.EC2_USER }}
+													        key: ${{ secrets.EC2_KEY }}
+
+
+														These secrets store:
+
+														EC2 public IP / DNS
+
+														Linux username (e.g. ubuntu)
+
+														Private SSH key
+
+														Commands executed on EC2
+														docker pull <username>/node-app:latest
+
+
+														‚¨áÔ∏è Download latest image from Docker Hub
+
+														docker stop nodeapp || true
+														docker rm nodeapp || true
+
+
+														Ìªë Stop and remove old container
+														(|| true prevents failure if container doesn‚Äôt exist)
+
+														docker run -d -p 3000:3000 --name nodeapp <image>
+
+
+														Ì∫Ä Starts a new container
+
+														Runs in background (-d)
+
+														Maps port 3000 EC2 ‚Üí 3000 container
+
+														App becomes live Ìæâ
+
+														Ì¥Ñ What happens when you push code?
+
+														1Ô∏è‚É£ You push code to main
+														2Ô∏è‚É£ GitHub Actions starts workflow
+														3Ô∏è‚É£ App is built into Docker image
+														4Ô∏è‚É£ Image pushed to Docker Hub
+														5Ô∏è‚É£ EC2 pulls latest image
+														6Ô∏è‚É£ Old app stops
+														7Ô∏è‚É£ New app starts automatically
+
+														‚û°Ô∏è Zero manual work
+
+														Ì∑† Interview-ready explanation
+
+														This GitHub Actions workflow implements a CI/CD pipeline where every push to the main branch builds a Docker image, pushes it to Docker Hub, and deploys it to an EC2 instance using SSH.
+
+														‚úÖ Important improvements (next level)
+
+														Add --restart unless-stopped
+
+														Use image tags with github.sha
+
+														Add health checks
+
+														Use AWS ECR instead of Docker Hub:
